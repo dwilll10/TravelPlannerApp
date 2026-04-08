@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Travel Planner</title>
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <span class="header-icon">✈️</span>
+    <div>
+      <h1>Travel Planner</h1>
+      <p>AI-powered day-by-day itineraries</p>
+    </div>
+  </header>
+
+  <!-- Sidebar / Form -->
+  <aside class="sidebar">
+
+    <form id="planner-form" onsubmit="return false;">
+
+      <!-- Destination -->
+      <div class="form-group">
+        <p class="section-label">Destination</p>
+        <input type="text" id="destination" placeholder="e.g. Funchal, Madeira, Portugal" autocomplete="off">
+      </div>
+
+      <!-- Dates + Travelers -->
+      <div>
+        <p class="section-label">Dates &amp; Travelers</p>
+        <div class="date-row" style="margin-bottom:8px;">
+          <div class="form-group">
+            <label for="start-date">Arrival</label>
+            <input type="date" id="start-date">
+          </div>
+          <div class="form-group">
+            <label for="end-date">Departure</label>
+            <input type="date" id="end-date">
+          </div>
+        </div>
+        <div class="form-group">
+          <label for="travelers">Number of travelers</label>
+          <input type="number" id="travelers" value="2" min="1" max="20">
+        </div>
+      </div>
+
+      <!-- Lodging -->
+      <div class="form-group">
+        <p class="section-label">Lodging</p>
+        <input type="text" id="lodging" placeholder="e.g. Rua da Praia Formosa 002, Funchal">
+      </div>
+
+      <!-- Itinerary types -->
+      <div>
+        <p class="section-label">What to plan</p>
+        <div class="type-grid">
+          <label class="type-chip" id="chip-food" data-type="food">
+            <input type="checkbox" value="food">
+            <span class="icon">🍽️</span> Food &amp; Dining
+          </label>
+          <label class="type-chip" id="chip-drinks" data-type="drinks">
+            <input type="checkbox" value="drinks">
+            <span class="icon">🍷</span> Bars &amp; Drinks
+          </label>
+          <label class="type-chip" id="chip-sightseeing" data-type="sightseeing">
+            <input type="checkbox" value="sightseeing">
+            <span class="icon">🏛️</span> Sightseeing
+          </label>
+          <label class="type-chip" id="chip-museums_culture" data-type="museums_culture">
+            <input type="checkbox" value="museums_culture">
+            <span class="icon">🎭</span> Museums &amp; Culture
+          </label>
+          <label class="type-chip" id="chip-hiking_nature" data-type="hiking_nature">
+            <input type="checkbox" value="hiking_nature">
+            <span class="icon">🥾</span> Hiking &amp; Nature
+          </label>
+          <label class="type-chip" id="chip-shopping" data-type="shopping">
+            <input type="checkbox" value="shopping">
+            <span class="icon">🛍️</span> Shopping &amp; Markets
+          </label>
+        </div>
+
+        <!-- Custom topic -->
+        <div style="margin-top:10px;">
+          <input type="text" id="custom-topic" placeholder="Something else? e.g. Wellness &amp; spas, Live music, Architecture…">
+        </div>
+
+        <!-- Food sub-options (shown when food is checked) -->
+        <div id="food-options" style="margin-top:10px;">
+          <div class="form-group">
+            <label>Cuisine style</label>
+            <input type="text" id="food-style" placeholder="e.g. Local &amp; authentic, fine dining, street food">
+          </div>
+          <div class="form-group">
+            <label>Dietary restrictions</label>
+            <input type="text" id="food-dietary" placeholder="e.g. Vegetarian, gluten-free">
+          </div>
+          <div class="form-group">
+            <label>Max dinner budget ($/person)</label>
+            <input type="number" id="food-budget" placeholder="e.g. 100" min="0">
+          </div>
+        </div>
+      </div>
+
+      <!-- Trip vibe -->
+      <div>
+        <p class="section-label">Trip vibe</p>
+        <div class="vibe-grid">
+          <label class="vibe-tag" data-vibe="Adventurous"><input type="checkbox"> Adventurous</label>
+          <label class="vibe-tag" data-vibe="Relaxing"><input type="checkbox"> Relaxing</label>
+          <label class="vibe-tag" data-vibe="Foodie"><input type="checkbox"> Foodie</label>
+          <label class="vibe-tag" data-vibe="Cultural immersion"><input type="checkbox"> Cultural</label>
+          <label class="vibe-tag" data-vibe="Off-the-beaten-path"><input type="checkbox"> Off-beat</label>
+          <label class="vibe-tag" data-vibe="Family-friendly"><input type="checkbox"> Family</label>
+          <label class="vibe-tag" data-vibe="Romantic"><input type="checkbox"> Romantic</label>
+          <label class="vibe-tag" data-vibe="Budget-conscious"><input type="checkbox"> Budget</label>
+        </div>
+      </div>
+
+      <!-- Planned events -->
+      <div>
+        <p class="section-label">Planned events</p>
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:8px;">
+          Add hikes, tours, reservations — the AI will plan around them.
+        </p>
+        <div id="events-list" class="events-list"></div>
+        <button type="button" id="btn-add-event" class="btn-add-event">+ Add event</button>
+      </div>
+
+      <!-- Notes -->
+      <div class="form-group">
+        <p class="section-label">Additional notes</p>
+        <textarea id="notes" placeholder="e.g. No spicy food, prefer walkable options, interested in wine tastings…"></textarea>
+      </div>
+
+      <!-- API Key -->
+      <div>
+        <p class="section-label">Anthropic API Key</p>
+        <p style="font-size:0.78rem;color:var(--text-muted);margin-bottom:6px;">
+          Optional — provide your own key to bypass rate limits.
+          Get one at <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);">console.anthropic.com</a>.
+        </p>
+        <input type="password" id="api-key" placeholder="sk-ant-…" autocomplete="off">
+      </div>
+
+      <!-- Generate -->
+      <button type="button" id="btn-generate" class="btn-generate">
+        Generate Itinerary
+      </button>
+
+    </form>
+  </aside>
+
+  <!-- Output panel -->
+  <main class="output-panel" id="output-panel">
+
+    <!-- Placeholder -->
+    <div id="output-placeholder" class="output-placeholder">
+      <span class="big-icon">🗺️</span>
+      <p>Fill in your trip details and click <strong>Generate Itinerary</strong> to get a personalized day-by-day guide.</p>
+    </div>
+
+    <!-- Output header (hidden until generation starts) -->
+    <div id="output-header" class="output-header" style="display:none;">
+      <div id="status-bar" class="status-bar" style="display:none;">
+        <div id="spinner" class="spinner" style="display:none;"></div>
+        <span id="status-text"></span>
+      </div>
+      <div class="output-actions">
+        <button id="btn-copy" class="btn-action" disabled>Copy</button>
+        <button id="btn-download" class="btn-action" disabled>Download .md</button>
+      </div>
+    </div>
+
+    <!-- Rendered markdown -->
+    <div id="itinerary-output"></div>
+
+  </main>
+
+</div>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
