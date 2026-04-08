@@ -218,7 +218,7 @@ textarea { resize: vertical; min-height: 72px; }
 }
 .btn-add-event:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ── Generate button ── */
+/* ── Generate + Reset buttons ── */
 .btn-generate {
   background: var(--accent);
   color: white;
@@ -235,6 +235,21 @@ textarea { resize: vertical; min-height: 72px; }
 .btn-generate:hover { background: var(--accent-hover); }
 .btn-generate:active { transform: scale(0.98); }
 .btn-generate:disabled { background: #9ca3af; cursor: not-allowed; transform: none; }
+
+.btn-reset {
+  background: none;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 9px;
+  padding: 9px 20px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  cursor: pointer;
+  width: 100%;
+  margin-top: 6px;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-reset:hover { border-color: var(--error); color: var(--error); }
 
 /* ── Output panel ── */
 .output-placeholder {
