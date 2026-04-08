@@ -181,12 +181,43 @@ def build_user_prompt(params: dict) -> str:
     # Notes
     notes_section = f"\nADDITIONAL NOTES FROM TRAVELER:\n{notes}" if notes.strip() else ""
 
+    # Lodging
+    if lodging.strip():
+        lodging_line = f"  Lodging: {lodging}"
+        lodging_instruction = ""
+    else:
+        lodging_line = "  Lodging: Not specified"
+        lodging_instruction = """
+LODGING RECOMMENDATIONS:
+The traveler has not chosen lodging yet. Before the day-by-day itinerary, recommend exactly 3 hotels or accommodations at this destination. For each include:
+- Name (must be a real, bookable property)
+- Neighborhood and why the location is strategic for this trip
+- 1-2 sentences on what makes it stand out (vibe, amenities, value, views, etc.)
+- Approximate price range per night
+
+Format as:
+## LODGING OPTIONS
+### Option 1: [Name]
+[neighborhood] | [price range/night]
+[Why it's a great base for this trip]
+
+### Option 2: [Name]
+...
+
+### Option 3: [Name]
+...
+
+---
+
+Then proceed with the day-by-day itinerary, using a central/well-located area of the destination as the reference point for distance estimates.
+"""
+
     prompt = f"""Plan a {num_days}-day trip to {destination}.
 
 TRIP DETAILS:
   Destination: {destination}
   Dates: {date_range} ({num_days} days)
-  Lodging: {lodging}
+{lodging_line}
   Travelers: {travelers}
   Trip vibe: {vibe_str}
 
@@ -199,7 +230,7 @@ SCHEDULED EVENTS (hard constraints — plan everything around these):
 ITINERARY COVERAGE REQUESTED: {types_str}
 
 {type_instructions}{notes_section}
-
+{lodging_instruction}
 OUTPUT FORMAT:
 
 For each day use this structure:
