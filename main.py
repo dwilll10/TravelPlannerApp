@@ -64,6 +64,12 @@ async def root():
     return (BASE_DIR / "static" / "index.html").read_text()
 
 
+class RefineRequest(BaseModel):
+    current_itinerary: str
+    prompt: str
+    api_key: Optional[str] = None
+
+
 @app.post("/generate")
 @limiter.limit("10/hour")
 async def generate(request: Request, req: GenerateRequest):
@@ -100,6 +106,63 @@ async def generate(request: Request, req: GenerateRequest):
             yield f"data: {json.dumps({'error': 'Rate limit reached. Please try again in a moment.'})}\n\n"
         except Exception as e:
             yield f"data: {json.dumps({'error': f'Generation failed: {str(e)}'})}\n\n"
+
+    return StreamingResponse(
+        stream_response(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "X-Accel-Buffering": "no",
+        },
+    )
+
+
+@app.post("/refine")
+@limiter.limit("20/hour")
+async def refine(request: Request, req: RefineRequest):
+    if not req.current_itinerary.strip():
+        raise HTTPException(status_code=400, detail="No itinerary to refine.")
+    if not req.prompt.strip():
+        raise HTTPException(status_code=400, detail="Please enter a refinement request.")
+
+    api_key = req.api_key or os.getenv("ANTHROPIC_API_KEY")
+    if not api_key:
+        raise HTTPException(status_code=500, detail="No API key configured.")
+
+    system = (
+        "You are a travel itinerary editor. The user has an existing itinerary and wants to modify it. "
+        "Apply their requested changes and return the complete updated itinerary in the same markdown format. "
+        "Keep everything that isn't affected by the change intact. Be specific and practical."
+    )
+
+    messages = [
+        {
+            "role": "user",
+            "content": (
+                f"Here is my current itinerary:\n\n{req.current_itinerary}\n\n"
+                f"Please make this change: {req.prompt}"
+            ),
+        }
+    ]
+
+    async def stream_response():
+        try:
+            client = anthropic.Anthropic(api_key=api_key)
+            with client.messages.stream(
+                model=MODEL,
+                max_tokens=MAX_TOKENS,
+                system=system,
+                messages=messages,
+            ) as stream:
+                for text in stream.text_stream:
+                    yield f"data: {json.dumps({'text': text})}\n\n"
+            yield "data: [DONE]\n\n"
+        except anthropic.AuthenticationError:
+            yield f"data: {json.dumps({'error': 'Invalid API key.'})}\n\n"
+        except anthropic.RateLimitError:
+            yield f"data: {json.dumps({'error': 'Rate limit reached. Please try again in a moment.'})}\n\n"
+        except Exception as e:
+            yield f"data: {json.dumps({'error': f'Refinement failed: {str(e)}'})}\n\n"
 
     return StreamingResponse(
         stream_response(),

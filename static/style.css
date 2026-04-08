@@ -345,6 +345,40 @@ textarea { resize: vertical; min-height: 72px; }
   align-items: end;
 }
 
+/* ── Refinement box ── */
+.refine-divider {
+  border-top: 1px solid var(--border);
+  margin: 8px 0 20px;
+}
+
+.refine-row {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.refine-row textarea {
+  flex: 1;
+  min-height: 60px;
+  resize: vertical;
+}
+
+.btn-refine {
+  background: var(--surface);
+  border: 1.5px solid var(--accent);
+  border-radius: 9px;
+  color: var(--accent);
+  cursor: pointer;
+  padding: 10px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+.btn-refine:hover { background: var(--accent); color: white; }
+.btn-refine:disabled { opacity: 0.5; cursor: not-allowed; }
+
 /* ── Responsive ── */
 @media (max-width: 820px) {
   .app {

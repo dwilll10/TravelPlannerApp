@@ -16,6 +16,9 @@ const statusText      = document.getElementById('status-text');
 const spinnerEl       = document.getElementById('spinner');
 const btnDownload     = document.getElementById('btn-download');
 const btnCopy         = document.getElementById('btn-copy');
+const refineBox       = document.getElementById('refine-box');
+const refinePrompt    = document.getElementById('refine-prompt');
+const btnRefine       = document.getElementById('btn-refine');
 const eventsList      = document.getElementById('events-list');
 const addEventBtn     = document.getElementById('btn-add-event');
 const foodOptions     = document.getElementById('food-options');
@@ -186,6 +189,7 @@ generateBtn.addEventListener('click', async () => {
     setStatus('Done!', false);
     btnDownload.disabled = false;
     btnCopy.disabled = false;
+    refineBox.style.display = 'block';
 
   } catch (e) {
     showError(e.message || 'Something went wrong.');
@@ -206,6 +210,83 @@ function renderMarkdown() {
     outputEl.textContent = rawMarkdown;
   }
 }
+
+// ── Refine ─────────────────────────────────────────────────────────────────
+btnRefine.addEventListener('click', async () => {
+  const prompt = refinePrompt.value.trim();
+  if (!prompt || isGenerating) return;
+
+  clearError();
+  isGenerating = true;
+  btnRefine.disabled = true;
+  btnRefine.textContent = 'Updating…';
+  btnDownload.disabled = true;
+  btnCopy.disabled = true;
+  setStatus('Updating your itinerary…', true);
+
+  const apiKey = document.getElementById('api-key')?.value?.trim() || null;
+  const previousMarkdown = rawMarkdown;
+  rawMarkdown = '';
+  outputEl.innerHTML = '';
+
+  try {
+    const res = await fetch('/refine', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        current_itinerary: previousMarkdown,
+        prompt,
+        api_key: apiKey,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.json().catch(() => ({}));
+      throw new Error(body.detail || `Server error ${res.status}`);
+    }
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n');
+      buffer = lines.pop();
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.slice(6).trim();
+        if (payload === '[DONE]') break;
+        try {
+          const parsed = JSON.parse(payload);
+          if (parsed.error) throw new Error(parsed.error);
+          if (parsed.text) { rawMarkdown += parsed.text; renderMarkdown(); }
+        } catch (parseErr) {
+          if (parseErr.message && !parseErr.message.includes('JSON')) throw parseErr;
+        }
+      }
+    }
+
+    refinePrompt.value = '';
+    setStatus('Updated!', false);
+    btnDownload.disabled = false;
+    btnCopy.disabled = false;
+
+  } catch (e) {
+    rawMarkdown = previousMarkdown;
+    renderMarkdown();
+    showError(e.message || 'Refinement failed.');
+    setStatus('', false);
+  } finally {
+    isGenerating = false;
+    btnRefine.disabled = false;
+    btnRefine.textContent = 'Update';
+  }
+});
 
 // ── Download ───────────────────────────────────────────────────────────────
 btnDownload.addEventListener('click', () => {

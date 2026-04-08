@@ -180,6 +180,19 @@
     <!-- Rendered markdown -->
     <div id="itinerary-output"></div>
 
+    <!-- Refinement box (shown after generation completes) -->
+    <div id="refine-box" style="display:none;">
+      <div class="refine-divider"></div>
+      <p class="section-label" style="margin-bottom:8px;">Refine your itinerary</p>
+      <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;">
+        Want to swap something out, add an activity, or adjust a day? Just ask.
+      </p>
+      <div class="refine-row">
+        <textarea id="refine-prompt" rows="2" placeholder="e.g. Replace the Day 3 dinner with something closer to the hotel, or add a morning yoga class on Day 2…"></textarea>
+        <button type="button" id="btn-refine" class="btn-refine">Update</button>
+      </div>
+    </div>
+
   </main>
 
 </div>
