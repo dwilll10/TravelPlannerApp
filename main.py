@@ -1,6 +1,9 @@
 import json
 import os
+from pathlib import Path
 from typing import Optional
+
+BASE_DIR = Path(__file__).parent
 
 import anthropic
 from dotenv import load_dotenv
@@ -23,7 +26,7 @@ limiter = Limiter(key_func=get_remote_address, default_limits=["10/hour"])
 app = FastAPI(title="Travel Planner")
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
-app.mount("/static", StaticFiles(directory="static"), name="static")
+app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
 
 MODEL = "claude-sonnet-4-6"
 MAX_TOKENS = 8192
@@ -58,8 +61,7 @@ class GenerateRequest(BaseModel):
 
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    with open("static/index.html") as f:
-        return f.read()
+    return (BASE_DIR / "static" / "index.html").read_text()
 
 
 @app.post("/generate")
