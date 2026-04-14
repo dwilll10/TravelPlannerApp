@@ -7,6 +7,8 @@
   <link rel="stylesheet" href="/static/style.css">
   <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 <body>
 <div class="app">
@@ -178,11 +180,21 @@
       <div class="output-actions">
         <button id="btn-copy" class="btn-action" disabled>Copy</button>
         <button id="btn-download" class="btn-action" disabled>Download PDF</button>
+        <button id="btn-download-map" class="btn-action" disabled style="display:none;">Download Map</button>
       </div>
     </div>
 
     <!-- Rendered markdown -->
     <div id="itinerary-output"></div>
+
+    <!-- Interactive map (hidden until itinerary generated) -->
+    <div id="map-section" style="display:none;">
+      <div class="map-header">
+        <p class="section-label" style="margin-bottom:0;">Interactive Map</p>
+        <button type="button" id="btn-toggle-map" class="btn-action">Hide Map</button>
+      </div>
+      <div id="map-container"></div>
+    </div>
 
     <!-- Refinement box (shown after generation completes) -->
     <div id="refine-box" style="display:none;">

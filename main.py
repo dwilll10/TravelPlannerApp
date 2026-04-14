@@ -14,16 +14,41 @@ from pydantic import BaseModel
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from prompts import build_system_prompt, build_user_prompt
 
 load_dotenv()
 
-# Rate limit: 10 requests/hour per IP when using the server key.
+
+def _rate_limit_key(request: Request) -> str:
+    """Return a per-IP key, or empty string (exempt) when the user supplies their own API key."""
+    body = getattr(request.state, "body", None)
+    if body:
+        try:
+            data = json.loads(body)
+            if data.get("api_key"):
+                return ""
+        except (json.JSONDecodeError, AttributeError):
+            pass
+    return get_remote_address(request)
+
+
+# Rate limit: per-IP when using the server key.
 # Users who supply their own API key bypass this limit.
-limiter = Limiter(key_func=get_remote_address, default_limits=["10/hour"])
+limiter = Limiter(key_func=_rate_limit_key, default_limits=[])
+
+
+class _CacheBodyMiddleware(BaseHTTPMiddleware):
+    """Cache raw request body on request.state so the rate-limit key func can read it."""
+    async def dispatch(self, request: Request, call_next):
+        if request.method == "POST":
+            request.state.body = await request.body()
+        return await call_next(request)
+
 
 app = FastAPI(title="Travel Planner")
+app.add_middleware(_CacheBodyMiddleware)
 app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
 app.mount("/static", StaticFiles(directory=BASE_DIR / "static"), name="static")
@@ -71,7 +96,7 @@ class RefineRequest(BaseModel):
 
 
 @app.post("/generate")
-@limiter.limit("10/hour")
+@limiter.limit("10/hour", key_func=_rate_limit_key)
 async def generate(request: Request, req: GenerateRequest):
     if not req.itinerary_types:
         raise HTTPException(status_code=400, detail="Select at least one itinerary type.")
@@ -118,7 +143,7 @@ async def generate(request: Request, req: GenerateRequest):
 
 
 @app.post("/refine")
-@limiter.limit("20/hour")
+@limiter.limit("20/hour", key_func=_rate_limit_key)
 async def refine(request: Request, req: RefineRequest):
     if not req.current_itinerary.strip():
         raise HTTPException(status_code=400, detail="No itinerary to refine.")
@@ -132,7 +157,15 @@ async def refine(request: Request, req: RefineRequest):
     system = (
         "You are a travel itinerary editor. The user has an existing itinerary and wants to modify it. "
         "Apply their requested changes and return the complete updated itinerary in the same markdown format. "
-        "Keep everything that isn't affected by the change intact. Be specific and practical."
+        "Keep everything that isn't affected by the change intact. Be specific and practical.\n\n"
+        "After the full itinerary, append a machine-readable location block in this exact format:\n\n"
+        "```json:locations\n"
+        '[{"name": "Venue Name", "lat": 38.7169, "lng": -9.1399, "day": 1, "type": "food", "meal": "dinner"}]\n'
+        "```\n\n"
+        "Include EVERY venue, trail, market, bar, café, and attraction in the itinerary. "
+        '"type" must be one of: food, drinks, sightseeing, museums_culture, hiking_nature, shopping. '
+        '"day" is the day number (integer). "meal" is optional — only for food entries. '
+        "Use accurate real-world coordinates. This block must be the LAST thing in your response."
     )
 
     messages = [

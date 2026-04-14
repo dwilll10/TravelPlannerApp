@@ -20,7 +20,7 @@ TravelPlannerApp/
 └── static/
     ├── index.html       # Single-page UI
     ├── style.css        # Styling — two-panel layout, chips, tags
-    └── app.js           # Form logic, SSE stream handler, PDF export, reset
+    └── app.js           # Form logic, SSE stream handler, PDF export, map, reset
 ```
 
 ---
@@ -99,6 +99,7 @@ Both endpoints return `text/event-stream` SSE. Each event is `data: {"text": "..
 - Scheduled events formatted as hard constraints
 - Custom topic appended as an additional coverage section
 - Output format instructions with day headers and reference sections
+- Appends a `json:locations` fenced block instruction asking Claude to emit lat/lng coordinates for every venue (used by the frontend map)
 
 **`_type_specific_instructions()`** — generates one focused paragraph per type:
 - `food` — meals, budget, brunch, coffee spots
@@ -116,10 +117,15 @@ Both endpoints return `text/event-stream` SSE. Each event is `data: {"text": "..
 - **Type chips** — multi-select, toggle `.active` class on click; food chip shows/hides sub-options panel
 - **Vibe tags** — multi-select pill toggles
 - **Planned events** — dynamic add/remove rows (date + time + description); injected as hard constraints into the prompt
+- **Interactive map** — Leaflet.js + OpenStreetMap; appears below itinerary after generation with color-coded pins per type (food=red, drinks=purple, sightseeing=green, museums=blue, hiking=dark green, shopping=orange); click pins for venue name, day, and type; toggle show/hide; updates on refine, clears on reset
+- **Download Map** — exports a self-contained HTML file with the interactive Leaflet map (all markers, legend, full-screen); opens in any browser standalone
 - **Refine box** — appears after generation completes; sends current markdown + a change request to `/refine`
-- **Reset button** — clears all fields, chips, tags, events, and output; restores default dates
+- **Reset button** — clears all fields, chips, tags, events, output, and map; restores default dates
 - **Download PDF** — uses `html2pdf.js` (CDN) to render the output panel to A4 PDF
 - **Copy** — copies raw markdown to clipboard
+
+### Location Data Flow
+The prompt instructs Claude to append a `` ```json:locations `` fenced block at the end of every itinerary containing `{name, lat, lng, day, type, meal}` for each venue. After streaming completes, `extractLocations()` parses and strips this block from `rawMarkdown` (so it never appears in the rendered output), then `renderMap()` plots the markers. The same flow runs for `/refine` responses.
 
 ### SSE Streaming Pattern
 ```javascript
@@ -139,7 +145,7 @@ Uses `slowapi`. Applied to both endpoints:
 - `/generate` — 10 requests/hour per IP
 - `/refine` — 20 requests/hour per IP
 
-Users can provide their own Anthropic API key via the UI field — it is passed as `api_key` in the request body and used instead of the server key. Rate limits still apply (IP-based, not key-based).
+Users who provide their own Anthropic API key via the UI field bypass rate limits entirely. This is implemented via a custom `_rate_limit_key()` function that returns an empty string (which slowapi skips) when `api_key` is present in the request body. A `_CacheBodyMiddleware` caches the raw request body on `request.state` so the key function can read it before FastAPI consumes the stream.
 
 ---
 
@@ -161,3 +167,5 @@ Static file paths use `Path(__file__).parent` (absolute) so they resolve correct
 - **No JS framework**: The UI is plain HTML/CSS/JS. Simple enough that a framework would add complexity without benefit.
 - **Absolute static paths**: `BASE_DIR = Path(__file__).parent` prevents path failures when the working directory differs between local dev and Render.
 - **Refinement preserves context**: `/refine` receives the full current itinerary as context so Claude can make surgical edits without regenerating from scratch.
+- **Prompt-based coordinates**: Rather than geocoding venue names via an external API (Nominatim, Google), the prompt asks Claude to include lat/lng in a JSON block. Simpler, no external API dependency, and accurate enough for a planning map.
+- **Standalone map export**: The "Download Map" button generates a self-contained HTML file with Leaflet CDN references and inline marker data — no server needed to view it.

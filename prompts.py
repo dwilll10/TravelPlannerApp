@@ -250,7 +250,24 @@ After all daily sections, include:
 ## DON'T MISS
 [3-5 experiences that are truly unmissable — the ones that define this trip]
 
-{_reference_sections(itinerary_types)}"""
+{_reference_sections(itinerary_types)}
+
+After ALL sections above, append a machine-readable location block in this exact format:
+
+```json:locations
+[
+  {{"name": "Venue Name", "lat": 38.7169, "lng": -9.1399, "day": 1, "type": "food", "meal": "dinner"}},
+  {{"name": "Another Venue", "lat": 38.7200, "lng": -9.1350, "day": 2, "type": "sightseeing"}}
+]
+```
+
+Rules for the location block:
+- Include EVERY venue, trail, market, bar, café, and attraction mentioned in the itinerary
+- "type" must be one of: food, drinks, sightseeing, museums_culture, hiking_nature, shopping
+- "day" is the day number (integer)
+- "meal" is optional — include only for food entries (breakfast, brunch, lunch, dinner, coffee)
+- Use accurate real-world coordinates (latitude, longitude as decimal degrees)
+- This block must be the LAST thing in your response"""
 
     return prompt
 
